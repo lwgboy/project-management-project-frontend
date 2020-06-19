@@ -89,6 +89,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="pageChange(1)">查询</el-button>
+        <el-button type="primary" @click="exportPurchase">导出</el-button>
       </el-form-item>
     </el-form>
     <!-- 操作 -->
@@ -230,10 +231,11 @@
 <script>
 import { findAllCustomer } from '@/api/customer'
 import { findAllOrder, findOrderByCode } from '@/api/order'
-import { findPurchaseByPageAndCondition, createPurchase, updatePurchase, deletePurchase, submitOrder } from '@/api/purchase'
+import { findPurchaseByPageAndCondition, createPurchase, updatePurchase, deletePurchase, submitPurchase, exportPurchase } from '@/api/purchase'
 import { findAllDictionary } from '@/api/dictionary'
 import Pagination from '@/components/Pagination'
 import Dialogs from '@/components/Dialogs'
+import { download } from '@/utils/download'
 
 export default {
   components: {
@@ -526,7 +528,7 @@ export default {
         beforeClose: (action, instance, done) => {
           if (action === 'confirm') {
             instance.confirmButtonLoading = true
-            submitOrder(id).then(() => {
+            submitPurchase(id).then(() => {
               done()
               this.$message.success('提交采购单成功')
               instance.confirmButtonLoading = false
@@ -539,6 +541,11 @@ export default {
           }
         }
       }).catch(() => {})
+    },
+    exportPurchase () {
+      exportPurchase(Object.assign({}, this.queryForm)).then(resp => {
+        download(resp, 'PurchaseList.xlsx')
+      })
     }
   }
 }

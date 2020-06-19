@@ -42,3 +42,12 @@ export function submitExpense (id) {
     method: 'put'
   })
 }
+
+export function exportExpense (data) {
+  return request({
+    url: '/v1/expenses/v1/export',
+    method: 'post',
+    data,
+    responseType: 'blob'
+  })
+}

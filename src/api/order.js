@@ -57,3 +57,12 @@ export function findOrderByCode (code) {
     method: 'get'
   })
 }
+
+export function exportOrder (data) {
+  return request({
+    url: '/v1/orders/v1/export',
+    method: 'post',
+    data,
+    responseType: 'blob'
+  })
+}

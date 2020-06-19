@@ -26,11 +26,11 @@ service.interceptors.response.use(
 
   response => {
     // 导出/下载 文件
-    // const headers = response.headers
-    // if (headers['content-type'] === 'application/octet-stream;charset=utf-8') {
-    //   store.commit('CLOSE_LOADING', 'exportLoading')
-    //   return response.data
-    // }
+    const headers = response.headers
+    if (headers['content-type'] === 'application/octet-stream;charset=utf-8') {
+      store.commit('CLOSE_LOADING', 'exportLoading')
+      return response.data
+    }
 
     const res = response.data
     const code = res.code

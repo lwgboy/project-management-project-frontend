@@ -36,9 +36,19 @@ export function deletePurchase (id) {
 }
 
 // 提交采购单
-export function submitOrder (id) {
+export function submitPurchase (id) {
   return request({
     url: '/v1/purchases/v1/' + id + '/submit',
     method: 'put'
+  })
+}
+
+// 导出采购信息
+export function exportPurchase (data) {
+  return request({
+    url: '/v1/purchases/v1/export',
+    method: 'post',
+    data,
+    responseType: 'blob'
   })
 }

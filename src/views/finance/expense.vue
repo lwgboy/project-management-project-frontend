@@ -34,6 +34,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="pageChange(1)">查询</el-button>
+        <el-button type="primary" @click="exportExpense">导出</el-button>
       </el-form-item>
     </el-form>
     <!-- 操作 -->
@@ -103,9 +104,10 @@
 <script>
 import { findAllDictionary } from '@/api/dictionary'
 import { findAllOrder } from '@/api/order'
-import { findExpenseByPageAndCondition, createExpense, updateExpense, deleteExpense, submitExpense } from '@/api/expense'
+import { findExpenseByPageAndCondition, createExpense, updateExpense, deleteExpense, submitExpense, exportExpense } from '@/api/expense'
 import Pagination from '@/components/Pagination'
 import Dialogs from '@/components/Dialogs'
+import { download } from '@/utils/download'
 
 export default {
   components: {
@@ -302,6 +304,11 @@ export default {
           }
         }
       }).catch(() => {})
+    },
+    exportExpense () {
+      exportExpense(Object.assign({}, this.queryForm)).then(resp => {
+        download(resp, 'ExpenseList.xlsx')
+      })
     }
   }
 }

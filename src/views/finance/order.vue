@@ -47,6 +47,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="pageChange(1)">查询</el-button>
+        <el-button type="primary" @click="exportOrder">导出</el-button>
       </el-form-item>
     </el-form>
     <!-- 操作 -->
@@ -131,9 +132,10 @@
 <script>
 import { findAllCustomer } from '@/api/customer'
 import { findAllDictionary } from '@/api/dictionary'
-import { findOrderByPageAndCondition, createOrder, updateOrder, deleteOrder, submitOrder } from '@/api/order'
+import { findOrderByPageAndCondition, createOrder, updateOrder, deleteOrder, submitOrder, exportOrder } from '@/api/order'
 import Pagination from '@/components/Pagination'
 import Dialogs from '@/components/Dialogs'
+import { download } from '@/utils/download'
 
 export default {
   components: {
@@ -359,6 +361,11 @@ export default {
           }
         }
       }).catch(() => {})
+    },
+    exportOrder () {
+      exportOrder(Object.assign({}, this.queryForm)).then(resp => {
+        download(resp, 'OrderList.xlsx')
+      })
     }
   }
 }

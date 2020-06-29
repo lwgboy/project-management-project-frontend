@@ -96,11 +96,11 @@
       <el-button type="primary" @click="openForm()">添加</el-button>
     </div>
     <!-- 列表 -->
-    <el-table v-loading="$store.getters.loading" :data="purchases" border tooltip-effect="dark" :row-class-name="tableRowClassName" style="width: 100%">
+    <el-table v-loading="$store.getters.loading" :data="purchases" border tooltip-effect="dark" :row-class-name="tableRowClassName" style="width: 100%" show-summary :summary-method="getSummaries">
       <el-table-column align="center" label="客户名称" show-overflow-tooltip prop="customerName" />
       <el-table-column align="center" label="创建日期" show-overflow-tooltip prop="createTime" />
       <el-table-column align="center" label="申请人" show-overflow-tooltip prop="createUser" />
-      <el-table-column align="center" label="订单编号" show-overflow-tooltip prop="orderCode" />
+      <el-table-column align="center" label="订单号" show-overflow-tooltip prop="orderCode" />
       <el-table-column align="center" label="报价单号" show-overflow-tooltip prop="quoteCode" />
       <el-table-column align="center" label="所属部门" show-overflow-tooltip prop="department" />
       <el-table-column align="center" label="是否报价" show-overflow-tooltip prop="quoted" :formatter="quotedFormat" />
@@ -119,11 +119,12 @@
       <el-table-column align="center" label="联系方式" show-overflow-tooltip prop="contact" />
       <el-table-column align="center" label="进项票种类" show-overflow-tooltip prop="inputTicketTypeName" />
       <el-table-column align="center" label="进项票状态" show-overflow-tooltip prop="inputTicketStateName" />
-      <el-table-column align="center" label="操作" width="150" fixed="right">
+      <el-table-column align="center" label="操作" width="200" fixed="right">
         <template slot-scope="scope">
           <el-button type="text" :disabled="scope.row.submitted" @click="openForm(scope.row)">修改</el-button>
           <el-button type="text" :disabled="scope.row.submitted" @click="submitPurchase(scope.row.id)">提交</el-button>
           <el-button type="text" :disabled="scope.row.submitted" @click="deletePurchase(scope.row.id)">删除</el-button>
+          <el-button type="text" @click="openUpload(scope.row.id)">上传</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -153,6 +154,13 @@
         </el-form-item>
         <el-form-item label="订单金额:">
           <el-input v-model.trim="purchaseForm.orderPrice" clearable placeholder="请输入订单金额" disabled />
+        </el-form-item>
+        <el-form-item label="订单文件:">
+          <el-card class="box-card">
+            <div v-for="o in orderImages" :key="o.id">
+              <el-link :href="o.url" target="_blank">{{ o.name }}</el-link>
+            </div>
+          </el-card>
         </el-form-item>
         <el-form-item label="报价单号:" prop="quoteCode">
           <el-input v-model.trim="purchaseForm.quoteCode" clearable placeholder="请输入报价单号" />
@@ -209,13 +217,19 @@
         </el-form-item>
       </el-form>
     </dialogs>
+    <dialogs v-model="uploadVisible" :title="'上传'" @submitClick="upload">
+      <el-upload ref="upload" :auto-upload="false" action="fake action" multiple :file-list="purchaseImages" :on-change="uploadChange" :on-remove="remove" :on-preview="preview">
+        <el-button type="primary">点击上传</el-button>
+      </el-upload>
+      <br>
+    </dialogs>
   </div>
 </template>
 
 <script>
 import { findAllCustomer } from '@/api/customer'
-import { findAllOrder, findOrderByCode } from '@/api/order'
-import { findPurchaseByPageAndCondition, createPurchase, updatePurchase, deletePurchase, submitPurchase } from '@/api/purchase'
+import { findAllOrder, findOrderByCode, findOrderImageByCode } from '@/api/order'
+import { findPurchaseByPageAndCondition, createPurchase, updatePurchase, deletePurchase, submitPurchase, findPurchaseImageById, uploadPurchaseImages, removePurchaseImages } from '@/api/purchase'
 import { findAllDictionary } from '@/api/dictionary'
 import Pagination from '@/components/Pagination'
 import Dialogs from '@/components/Dialogs'
@@ -276,6 +290,7 @@ export default {
       inputTicketStateOptions: [],
       // 列表数据
       purchases: [],
+      orderImages: [],
       // 分页信息
       page: {
         pageSize: 10,
@@ -285,6 +300,7 @@ export default {
       totalCount: 0,
       // 弹出框状态
       dialogVisible: false,
+      uploadVisible: false,
       // 采购单表单
       purchaseForm: {
         id: null,
@@ -310,6 +326,8 @@ export default {
         orderDate: null,
         orderPrice: null
       },
+      purchaseImageId: null,
+      purchaseImages: [],
       // 订单表单规则
       rules: {
         customerId: [
@@ -320,18 +338,6 @@ export default {
         ],
         createUser: [
           { required: true, message: '请输入创建人', trigger: 'blur' }
-        ],
-        quoteCode: [
-          { required: true, message: '请输入报价单号', trigger: 'blur' }
-        ],
-        quoteDate: [
-          { required: true, message: '请选择报价日期', trigger: 'change' }
-        ],
-        department: [
-          { required: true, message: '请输入所属部门', trigger: 'blur' }
-        ],
-        quoted: [
-          { required: true, message: '请选择是否报价', trigger: 'change' }
         ],
         name: [
           { required: true, message: '请输入货品及劳务名称', trigger: 'blur' }
@@ -400,6 +406,31 @@ export default {
         this.totalCount = resp.totalCount
       })
     },
+    getSummaries (param) {
+      const { columns, data } = param
+      const sums = []
+      columns.forEach((column, index) => {
+        if (index === 0) {
+          sums[index] = '总价'
+          return
+        }
+        const values = data.map(item => Number(item[column.property]))
+        if (!values.every(value => isNaN(value)) && (index === 12 || index === 13 || index === 16)) {
+          sums[index] = values.reduce((prev, curr) => {
+            const value = Number(curr)
+            if (!isNaN(value)) {
+              return prev + curr
+            } else {
+              return prev
+            }
+          }, 0)
+          sums[index] += ' 元'
+        } else {
+          sums[index] = ''
+        }
+      })
+      return sums
+    },
     // 选择每页展示多少条
     sizeChange (pageSize) {
       this.page.pageSize = pageSize
@@ -423,6 +454,7 @@ export default {
       this.dialogVisible = true
       if (this.$refs['purchaseForm'] !== undefined) {
         this.$refs['purchaseForm'].resetFields()
+        this.orderImages.length = 0
       }
       if (row) {
         row.customerId += ''
@@ -434,12 +466,18 @@ export default {
         console.info(row.orderCode)
         this.findOrderByCode(row.orderCode)
         Object.assign(this.purchaseForm, row)
+        findOrderImageByCode(row.orderCode).then(resp => {
+          this.orderImages = resp
+        })
       }
     },
     findOrderByCode (val) {
       findOrderByCode(val).then(resp => {
         this.purchaseForm.orderPrice = resp.price
         this.purchaseForm.orderDate = resp.orderDate
+        findOrderImageByCode(val).then(resp => {
+          this.orderImages = resp
+        })
       })
     },
     // 保存订单信息
@@ -508,6 +546,33 @@ export default {
           }
         }
       }).catch(() => {})
+    },
+    // 上传图片
+    openUpload (id) {
+      this.uploadVisible = true
+      this.purchaseImageId = id
+      findPurchaseImageById(id).then(resp => {
+        this.purchaseImages = resp
+      })
+    },
+    remove (file, fileList) {
+      removePurchaseImages(file.id)
+    },
+    uploadChange (file, fileList) {
+      this.purchaseImages = fileList
+    },
+    upload () {
+      const formData = new FormData()
+      this.purchaseImages.forEach(item => {
+        formData.append('files', item.raw)
+      })
+      uploadPurchaseImages(this.purchaseImageId, formData).then(() => {
+        this.$message.success('上传成功')
+        this.uploadVisible = false
+      })
+    },
+    preview (file) {
+      window.open(file.url, '_blank')
     }
   }
 }

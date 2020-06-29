@@ -54,11 +54,12 @@
       <el-button type="primary" @click="openForm()">添加</el-button>
     </div>
     <!-- 列表 -->
-    <el-table v-loading="$store.getters.loading" :data="orders" border tooltip-effect="dark" :row-class-name="tableRowClassName">
+    <el-table v-loading="$store.getters.loading" :data="orders" border tooltip-effect="dark" :row-class-name="tableRowClassName" style="width: 100%" show-summary :summary-method="getSummaries">
       <el-table-column align="center" label="客户名称" show-overflow-tooltip prop="customerName" />
+      <el-table-column align="center" label="编号" show-overflow-tooltip prop="customerNumber" />
       <el-table-column align="center" label="订单类型" show-overflow-tooltip prop="typeName" />
       <el-table-column align="center" label="订单日期" show-overflow-tooltip prop="orderDate" />
-      <el-table-column align="center" label="订单编号" show-overflow-tooltip prop="code" />
+      <el-table-column align="center" label="订单号" show-overflow-tooltip prop="code" />
       <el-table-column align="center" label="货物及劳务名称" show-overflow-tooltip prop="name" />
       <el-table-column align="center" label="税率" show-overflow-tooltip prop="taxRateName" />
       <el-table-column align="center" label="订单金额" show-overflow-tooltip prop="price" />
@@ -66,11 +67,12 @@
       <el-table-column align="center" label="开票日期" show-overflow-tooltip prop="createDate" />
       <el-table-column align="center" label="销项票种类" show-overflow-tooltip prop="salesTicketTypeName" />
       <el-table-column align="center" label="销项票号码" show-overflow-tooltip prop="salesTicketCode" />
-      <el-table-column align="center" label="操作" width="150">
+      <el-table-column align="center" label="操作" width="200" fixed="right">
         <template slot-scope="scope">
           <el-button type="text" :disabled="scope.row.submitted" @click="openForm(scope.row)">修改</el-button>
           <el-button type="text" :disabled="scope.row.submitted" @click="submitOrder(scope.row.id)">提交</el-button>
           <el-button type="text" :disabled="scope.row.submitted" @click="deleteOrder(scope.row.id)">删除</el-button>
+          <el-button type="text" @click="openUpload(scope.row.id)">上传</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -92,7 +94,7 @@
         <el-form-item label="订单日期:" prop="orderDate">
           <el-date-picker v-model.trim="orderForm.orderDate" type="date" placeholder="请选择订单日期" value-format="yyyy-MM-dd HH:mm:ss" />
         </el-form-item>
-        <el-form-item label="订单编号:" prop="code">
+        <el-form-item label="订单号:" prop="code">
           <el-input v-model.trim="orderForm.code" clearable placeholder="请输入订单编号" />
         </el-form-item>
         <el-form-item label="货物名称:" prop="name">
@@ -124,13 +126,19 @@
         </el-form-item>
       </el-form>
     </dialogs>
+    <dialogs v-model="uploadVisible" :title="'上传'" @submitClick="upload">
+      <el-upload ref="upload" :auto-upload="false" action="fake action" multiple :file-list="orderImages" :on-change="uploadChange" :on-remove="remove" :on-preview="preview">
+        <el-button type="primary">点击上传</el-button>
+      </el-upload>
+      <br>
+    </dialogs>
   </div>
 </template>
 
 <script>
 import { findAllCustomer } from '@/api/customer'
 import { findAllDictionary } from '@/api/dictionary'
-import { findOrderByPageAndCondition, createOrder, updateOrder, deleteOrder, submitOrder } from '@/api/order'
+import { findOrderByPageAndCondition, createOrder, updateOrder, deleteOrder, submitOrder, findOrderImageById, uploadOrderImages, removeOrderImages } from '@/api/order'
 import Pagination from '@/components/Pagination'
 import Dialogs from '@/components/Dialogs'
 
@@ -181,6 +189,7 @@ export default {
       totalCount: 0,
       // 弹出框状态
       dialogVisible: false,
+      uploadVisible: false,
       // 订单表单
       orderForm: {
         id: null,
@@ -196,6 +205,8 @@ export default {
         salesTicketType: null,
         salesTicketCode: null
       },
+      orderImageId: null,
+      orderImages: [],
       // 订单表单规则
       rules: {
         customerId: [
@@ -208,7 +219,7 @@ export default {
           { required: true, message: '请选择订单日期', trigger: 'change' }
         ],
         code: [
-          { required: true, message: '请输入订单编号', trigger: 'blur' }
+          { required: true, message: '请输入订单号', trigger: 'blur' }
         ],
         name: [
           { required: true, message: '请输入货物及劳务名称', trigger: 'blur' }
@@ -260,6 +271,31 @@ export default {
         this.totalCount = resp.totalCount
       })
     },
+    getSummaries (param) {
+      const { columns, data } = param
+      const sums = []
+      columns.forEach((column, index) => {
+        if (index === 0) {
+          sums[index] = '总价'
+          return
+        }
+        const values = data.map(item => Number(item[column.property]))
+        if (!values.every(value => isNaN(value)) && (index === 7)) {
+          sums[index] = values.reduce((prev, curr) => {
+            const value = Number(curr)
+            if (!isNaN(value)) {
+              return prev + curr
+            } else {
+              return prev
+            }
+          }, 0)
+          sums[index] += ' 元'
+        } else {
+          sums[index] = ''
+        }
+      })
+      return sums
+    },
     // 选择每页展示多少条
     sizeChange (pageSize) {
       this.page.pageSize = pageSize
@@ -291,6 +327,34 @@ export default {
         row.salesTicketType += ''
         Object.assign(this.orderForm, row)
       }
+    },
+    // 上传图片
+    openUpload (id) {
+      this.uploadVisible = true
+      this.orderImageId = id
+      findOrderImageById(id).then(resp => {
+        this.orderImages = resp
+      })
+    },
+    remove (file, fileList) {
+      removeOrderImages(file.id)
+    },
+    uploadChange (file, fileList) {
+      this.orderImages = fileList
+    },
+    upload () {
+      // this.$refs.upload.submit()
+      const formData = new FormData()
+      this.orderImages.forEach(item => {
+        formData.append('files', item.raw)
+      })
+      uploadOrderImages(this.orderImageId, formData).then(() => {
+        this.$message.success('上传成功')
+        this.uploadVisible = false
+      })
+    },
+    preview (file) {
+      window.open(file.url, '_blank')
     },
     // 保存订单信息
     saveOrder () {

@@ -66,3 +66,32 @@ export function exportOrder (data) {
     responseType: 'blob'
   })
 }
+
+export function findOrderImageById (id) {
+  return request({
+    url: '/v1/orders/v1/' + id + '/images',
+    method: 'get'
+  })
+}
+
+export function uploadOrderImages (id, data) {
+  return request({
+    url: '/v1/orders/v1/' + id + '/images',
+    method: 'post',
+    data
+  })
+}
+
+export function removeOrderImages (id) {
+  return request({
+    url: '/v1/orders/v1/' + id + '/images',
+    method: 'delete'
+  })
+}
+
+export function findOrderImageByCode (code) {
+  return request({
+    url: '/v1/orders/v1/codes/' + code + '/images',
+    method: 'get'
+  })
+}

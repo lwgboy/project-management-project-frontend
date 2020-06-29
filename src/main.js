@@ -16,7 +16,10 @@ import '@/permission' // 权限控制
 
 import * as filters from './filters' // 全局过滤器
 
+import Print from 'vue-print-nb'
+
 Vue.use(ElementUI)
+Vue.use(Print)
 
 // 全局自定义指定，用于判断按钮权限（使用时v-has="'update'"）
 Vue.directive('has', {

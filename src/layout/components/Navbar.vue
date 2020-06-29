@@ -10,7 +10,8 @@
           {{ name ? name: '用户' }}<i class="el-icon-caret-bottom" />
         </div>
         <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item command="password">修改密码</el-dropdown-item>
+          <el-dropdown-item command="year">帐套年份</el-dropdown-item>
+          <el-dropdown-item divided command="password">修改密码</el-dropdown-item>
           <el-dropdown-item divided command="logout">退出</el-dropdown-item>
         </el-dropdown-menu>
       </el-dropdown>
@@ -26,6 +27,15 @@
         </el-form-item>
       </el-form>
     </dialogs>
+
+    <dialogs v-model="yearVisible" title="帐套年份" @submitClick="setYear">
+      <el-form ref="yearForm" :model="yearForm" label-width="80px">
+        <el-form-item label="年份:" prop="oldSecret">
+          <el-date-picker v-model="yearForm.year" type="year" placeholder="选择年">
+          </el-date-picker>
+        </el-form-item>
+      </el-form>
+    </dialogs>
   </div>
 </template>
 
@@ -35,6 +45,7 @@ import Breadcrumb from '@/components/Breadcrumb'
 import Hamburger from '@/components/Hamburger'
 import Dialogs from '@/components/Dialogs'
 import { updatePassword } from '@/api/user'
+import { setYear } from '@/api/customer'
 import { isPassword } from '@/utils/validate'
 import Md5 from 'js-md5'
 
@@ -47,6 +58,10 @@ export default {
   data () {
     return {
       dialogVisible: false,
+      yearVisible: false,
+      yearForm: {
+        year: null
+      },
       userForm: {
         oldSecret: '',
         newSecret: ''
@@ -71,6 +86,11 @@ export default {
     ])
   },
   methods: {
+    setYear () {
+      setYear(this.yearForm.year).then(() => {
+        this.yearVisible = false
+      })
+    },
     toggleSideBar () {
       this.$store.dispatch('app/toggleSideBar')
     },
@@ -81,6 +101,10 @@ export default {
         if (this.$refs['userForm'] !== undefined) {
           this.$refs['userForm'].resetFields()
         }
+        return
+      }
+      if (command === 'year') {
+        this.yearVisible = true
         return
       }
       // 退出

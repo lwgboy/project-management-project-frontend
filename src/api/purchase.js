@@ -52,3 +52,25 @@ export function exportPurchase (data) {
     responseType: 'blob'
   })
 }
+
+export function findPurchaseImageById (id) {
+  return request({
+    url: '/v1/purchases/v1/' + id + '/images',
+    method: 'get'
+  })
+}
+
+export function uploadPurchaseImages (id, data) {
+  return request({
+    url: '/v1/purchases/v1/' + id + '/images',
+    method: 'post',
+    data
+  })
+}
+
+export function removePurchaseImages (id) {
+  return request({
+    url: '/v1/purchases/v1/' + id + '/images',
+    method: 'delete'
+  })
+}

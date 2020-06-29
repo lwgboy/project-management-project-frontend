@@ -37,12 +37,8 @@
         <el-button type="primary" @click="exportExpense">导出</el-button>
       </el-form-item>
     </el-form>
-    <!-- 操作 -->
-    <div class="table-up-button">
-      <el-button type="primary" @click="openForm()">添加</el-button>
-    </div>
     <!-- 列表 -->
-    <el-table v-loading="$store.getters.loading" :data="expenses" border tooltip-effect="dark">
+    <el-table v-loading="$store.getters.loading" :data="expenses" border tooltip-effect="dark" show-summary :summary-method="getSummaries">
       <el-table-column align="center" label="申请日期" show-overflow-tooltip prop="createTime" />
       <el-table-column align="center" label="申请人" show-overflow-tooltip prop="createUser" />
       <el-table-column align="center" label="所属单位" show-overflow-tooltip prop="company" />
@@ -215,6 +211,31 @@ export default {
         this.expenses = resp.record
         this.totalCount = resp.totalCount
       })
+    },
+    getSummaries (param) {
+      const { columns, data } = param
+      const sums = []
+      columns.forEach((column, index) => {
+        if (index === 0) {
+          sums[index] = '总价'
+          return
+        }
+        const values = data.map(item => Number(item[column.property]))
+        if (!values.every(value => isNaN(value)) && (index === 5)) {
+          sums[index] = values.reduce((prev, curr) => {
+            const value = Number(curr)
+            if (!isNaN(value)) {
+              return prev + curr
+            } else {
+              return prev
+            }
+          }, 0)
+          sums[index] += ' 元'
+        } else {
+          sums[index] = ''
+        }
+      })
+      return sums
     },
     // 选择每页展示多少条
     sizeChange (pageSize) {
